@@ -45,13 +45,13 @@ def lookupEmail(email):
         return False
 
 # Create a redirect for a provided email and its 'aliases'
-def handleEmailRedirect(email):
+def handleEmailRedirect(domain, email):
     if not lookupEmail(email):
         print("Direct email not found for: {}".format(email))
         if not lookupGroup(email):
             print("No group email for: {}, creating one".format(email))
 
-            aliases = openAliases(email)
+            aliases = openAliases(domain, email)
             print("email: {} has aliases: {}".format(email, aliases))
 
             if aliases:
@@ -70,11 +70,13 @@ def handleEmailRedirect(email):
 # Parse qmail files - they are supposed to be stored in qmail-list under our current path
 def parse_qmail(domain):
     entries = os.listdir('qmail-list/')
+    domainWithoutCom = domain.replace('.com', '')
+    search_string = "qmail-{}-(.*)".format(domainWithoutCom)
     for entry in entries:
-        m = re.search("qmail-{}-(.*)".format(domain), entry)
+        m = re.search(search_string, entry)
         # print('entry: %s' % entry)
         if (m is not None):
-            email = m.group(1) + '@{}'.fomrat(domain)
+            email = m.group(1) + '@{}'.format(domain)
             print('Looking up %s' % email)
             handleEmailRedirect(domain, email)
 
@@ -116,7 +118,7 @@ def returnEmails():
         for user in users:
             print(u'{0} ({1})'.format(user['primaryEmail'],
                 user['name']['fullName']))
-                
+
 # Helper function to return the list of groups present on our server - not called
 def returnGroups():
     # Call the Admin SDK Directory API
@@ -144,9 +146,10 @@ def returnGroups():
 # Open an alias file and append to it our domain
 def openAliases(domain, email):
     print("openAliases({}, {})" .format(domain, email))
+    domainWithoutCom = domain.replace('.com', '')
     emailNoDomain = email.replace('@{}'.format(domain), '')
     data = ""
-    filename = "qmail-list/qmail-{}-{}".format(domain, emailNoDomain)
+    filename = "qmail-list/qmail-{}-{}".format(domainWithoutCom, emailNoDomain)
     with open(filename) as alias_file:
         data = alias_file.read()
     alias_file.close()
