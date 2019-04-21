@@ -159,8 +159,8 @@ def openAliases(domain, email):
 
         line = line.replace('&', '')
 
-        line = line.replace('beyondsecurity.com.test-google-a.com', 'beyondsecurity.com')
-        if line == email: # Prevent self-loop caused by beyondsecurity.com.test-google-a.com
+        line = line.replace('{}.test-google-a.com'.format(domain), domain)
+        if line == email: # Prevent self-loop caused by {domain}.test-google-a.com
             continue
 
         if "@localhost" in line:
