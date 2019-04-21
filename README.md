@@ -1,6 +1,14 @@
 # qmail-conversion-google-group-api
 Convert Qmail redirects (qmail files) to Google Groups via API
 
+# Enable Directory API
+Go to:
+ https://developers.google.com/admin-sdk/directory/v1/quickstart/python
+
+Click on the "Enable The Directory API"
+
+Then ask the interface to provide a `credentials.json` file
+
 # Requirements
 1. ```apt-get install python3 python3-pip```
 
