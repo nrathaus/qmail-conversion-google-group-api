@@ -131,62 +131,6 @@ def main():
     service = build("admin", "directory_v1", credentials=creds)
 
 
-def returnEmails():
-    """Helper function to return the list of emails present on our server
-    - not called
-
-    """
-    logger.info("Getting the first 10 users in the domain")
-    results = (
-        service.users()
-        .list(customer="my_customer", maxResults=10, orderBy="email")
-        .execute()
-    )
-    users = results.get("users", [])
-
-    if not users:
-        logger.info("No users in the domain.")
-    else:
-        logger.info("Users:")
-        for user in users:
-            logger.info(
-                u"{0} ({1})".format(
-                    user["primaryEmail"], user["name"]["fullName"]
-                )
-            )
-
-
-def returnGroups():
-    """Helper function to return the list of groups present on our server
-    - not called
-
-    """
-    # Call the Admin SDK Directory API
-    logger.info("Getting the first 10 groups in the domain")
-    results = (
-        service.groups()
-        .list(customer="my_customer", maxResults=10, orderBy="email")
-        .execute()
-    )
-    groups = results.get("groups", [])
-
-    if not groups:
-        print("No qgroups in the domain.")
-    else:
-        logger.info("Groups:")
-        for group in groups:
-            logger.info("Group email: {}".format(group["email"]))
-
-            results = service.members().list(groupKey=group["id"]).execute()
-            # print("results: %s" % results)
-            members = results.get("members", [])
-            for member in members:
-                if member["type"] == "USER":
-                    logger.info(" %s" % member["email"])
-
-            logger.info("")
-
-
 def openAliases(domain, email):
     """Open an alias file and append to it our domain"""
     logger.info("openAliases({}, {})".format(domain, email))
@@ -228,29 +172,4 @@ def openAliases(domain, email):
 
 if __name__ == "__main__":
     main()
-    # returnEmails()
-
-    # returnGroups()
-    # exit(0)
-
-    # Test code
-    # email = 'test@email.com'
-    # if not lookupEmail(email):
-    # if not lookupGroup(email):
-    #     logger.info("email: %s has no Account or Group Email" % email)
-    #     aliases = openAliases(email)
-    #     if aliases:
-    #         objectGroup = {}
-    #         objectGroup['name'] = "qmail redirect for: {}".format(email)
-    #         objectGroup['email'] = email
-    #         objectGroup['aliases'] = aliases
-    #         resultInsert = service.groups().insert(body=objectGroup).execute()
-
-    #         logger.info("insert result: %s" % resultInsert)
-    #         if resultInsert['id']:
-    #             for alias in aliases:
-    #                 groupInfo = {"email": alias, "role": "MEMBER", "type": "USER"}
-    #                 resultAdd = service.members().insert(groupKey=resultInsert['id'], body=groupInfo).execute()
-    #                 logger.info("add result: %s" % resultAdd)
-
     parse_qmail("email.com")
