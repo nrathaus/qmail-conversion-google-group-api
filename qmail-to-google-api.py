@@ -1,10 +1,12 @@
-from __future__ import print_function
 import pickle
 import re
 import os
+import logging
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+
+logger = logging.getLogger('qmail_to_google_api')
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = [
@@ -18,7 +20,7 @@ service = None
 
 def lookupGroup(email):
     """Lookup a group based on the email"""
-    print("group email: %s" % email)
+    logger.info("group email: %s" % email)
     results = None
     try:
         results = service.groups().get(groupKey=email).execute()
@@ -26,7 +28,7 @@ def lookupGroup(email):
         pass
 
     if results is not None:
-        print("results: %s" % results)
+        logger.info("results: %s" % results)
         return True
     else:
         return False
@@ -34,7 +36,7 @@ def lookupGroup(email):
 
 def lookupEmail(email):
     """"Lookup an email based on the email"""
-    print("email: %s" % email)
+    logger.info("email: %s" % email)
     results = None
     try:
         results = service.users().get(userKey=email).execute()
@@ -42,7 +44,7 @@ def lookupEmail(email):
         pass
 
     if results is not None:
-        print("results: %s" % results)
+        logger.info("results: %s" % results)
         return True
     else:
         return False
@@ -51,12 +53,12 @@ def lookupEmail(email):
 def handleEmailRedirect(domain, email):
     "Create a redirect for a provided email and its 'aliases'"
     if not lookupEmail(email):
-        print("Direct email not found for: {}".format(email))
+        logger.info("Direct email not found for: {}".format(email))
         if not lookupGroup(email):
-            print("No group email for: {}, creating one".format(email))
+            logger.info("No group email for: {}, creating one".format(email))
 
             aliases = openAliases(domain, email)
-            print("email: {} has aliases: {}".format(email, aliases))
+            logger.info("email: {} has aliases: {}".format(email, aliases))
 
             if aliases:
                 objectGroup = {}
@@ -66,7 +68,7 @@ def handleEmailRedirect(domain, email):
                     service.groups().insert(body=objectGroup).execute()
                 )
 
-                print("insert result: %s" % resultInsert)
+                logger.info("insert result: %s" % resultInsert)
                 if resultInsert["id"]:
                     for alias in aliases:
                         groupInfo = {
@@ -81,7 +83,7 @@ def handleEmailRedirect(domain, email):
                             )
                             .execute()
                         )
-                        print("add result: %s" % resultAdd)
+                        logger.info("add result: %s" % resultAdd)
 
 
 def parse_qmail(domain):
@@ -96,10 +98,10 @@ def parse_qmail(domain):
     search_string = "qmail-{}-(.*)".format(domainWithoutCom)
     for entry in entries:
         m = re.search(search_string, entry)
-        # print('entry: %s' % entry)
+        logger.debug('entry: %s' % entry)
         if m is not None:
             email = m.group(1) + "@{}".format(domain)
-            print("Looking up %s" % email)
+            logger.info("Looking up %s" % email)
             handleEmailRedirect(domain, email)
 
 
@@ -134,7 +136,7 @@ def returnEmails():
     - not called
 
     """
-    print("Getting the first 10 users in the domain")
+    logger.info("Getting the first 10 users in the domain")
     results = (
         service.users()
         .list(customer="my_customer", maxResults=10, orderBy="email")
@@ -143,11 +145,11 @@ def returnEmails():
     users = results.get("users", [])
 
     if not users:
-        print("No users in the domain.")
+        logger.info("No users in the domain.")
     else:
-        print("Users:")
+        logger.info("Users:")
         for user in users:
-            print(
+            logger.info(
                 u"{0} ({1})".format(
                     user["primaryEmail"], user["name"]["fullName"]
                 )
@@ -160,7 +162,7 @@ def returnGroups():
 
     """
     # Call the Admin SDK Directory API
-    print("Getting the first 10 groups in the domain")
+    logger.info("Getting the first 10 groups in the domain")
     results = (
         service.groups()
         .list(customer="my_customer", maxResults=10, orderBy="email")
@@ -171,23 +173,23 @@ def returnGroups():
     if not groups:
         print("No qgroups in the domain.")
     else:
-        print("Groups:")
+        logger.info("Groups:")
         for group in groups:
-            print("Group email: {}".format(group["email"]))
+            logger.info("Group email: {}".format(group["email"]))
 
             results = service.members().list(groupKey=group["id"]).execute()
             # print("results: %s" % results)
             members = results.get("members", [])
             for member in members:
                 if member["type"] == "USER":
-                    print(" %s" % member["email"])
+                    logger.info(" %s" % member["email"])
 
-            print("")
+            logger.info("")
 
 
 def openAliases(domain, email):
     """Open an alias file and append to it our domain"""
-    print("openAliases({}, {})".format(domain, email))
+    logger.info("openAliases({}, {})".format(domain, email))
     domainWithoutCom = domain.replace(".com", "")
     emailNoDomain = email.replace("@{}".format(domain), "")
     data = ""
@@ -196,7 +198,7 @@ def openAliases(domain, email):
         data = alias_file.read()
     alias_file.close()
 
-    # print("data: %s" % data)
+    logger.debug("data: %s" % data)
     relevant_aliases = []
     for line in data.split("\n"):
         if not line.startswith("&"):
@@ -211,16 +213,16 @@ def openAliases(domain, email):
         if "@localhost" in line:
             continue  # Skip elements that redirect locally into fortress
 
-        print("line: %s" % line)
+        logger.info("line: %s" % line)
 
         if len(line) > 0:
             relevant_aliases.append(line)
 
     if len(relevant_aliases) == 0:
-        print("No relevant aliases for: %s (%s)" % (email, data))
+        logger.info("No relevant aliases for: %s (%s)" % (email, data))
         return None
 
-    print("relevant_aliases: %s" % relevant_aliases)
+    logger.info("relevant_aliases: %s" % relevant_aliases)
     return relevant_aliases
 
 
@@ -235,7 +237,7 @@ if __name__ == "__main__":
     # email = 'test@email.com'
     # if not lookupEmail(email):
     # if not lookupGroup(email):
-    #     print("email: %s has no Account or Group Email" % email)
+    #     logger.info("email: %s has no Account or Group Email" % email)
     #     aliases = openAliases(email)
     #     if aliases:
     #         objectGroup = {}
@@ -244,11 +246,11 @@ if __name__ == "__main__":
     #         objectGroup['aliases'] = aliases
     #         resultInsert = service.groups().insert(body=objectGroup).execute()
 
-    #         print("insert result: %s" % resultInsert)
+    #         logger.info("insert result: %s" % resultInsert)
     #         if resultInsert['id']:
     #             for alias in aliases:
     #                 groupInfo = {"email": alias, "role": "MEMBER", "type": "USER"}
     #                 resultAdd = service.members().insert(groupKey=resultInsert['id'], body=groupInfo).execute()
-    #                 print("add result: %s" % resultAdd)
+    #                 logger.info("add result: %s" % resultAdd)
 
     parse_qmail("email.com")
